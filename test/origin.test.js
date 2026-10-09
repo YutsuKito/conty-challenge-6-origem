@@ -9,3 +9,32 @@ test('sem toque válido fica orgânico e motivo auditável',()=>{const s=createS
 test('clique recebido após cadastro com mesmo timestamp não vence',()=>{const s=createService();touch(s,'original','2026-10-01T10:00:00Z');s.register({install_id:'install1',user_id:'u',registered_at:'2026-10-02T10:00:00Z'});touch(s,'late','2026-10-02T10:00:00Z',ref);const result=s.getRegistration('u');assert.equal(result.attribution.click_id,'original');assert.equal(result.touches.find(t=>t.click_id==='late').reason,'after_registration');});
 test('abertura orgânica independente inicia janela antes do primeiro link',()=>{const s=createService({windowDays:7});s.open({install_id:'install1',first_open_at:'2026-10-01T10:00:00Z'});touch(s,'edge','2026-10-08T10:00:00Z');touch(s,'late','2026-10-08T10:00:00.001Z',ref);const a=s.register({install_id:'install1',user_id:'u',registered_at:'2026-10-09T10:00:00Z'});assert.equal(a.attribution.click_id,'edge');assert.equal(a.touches.find(t=>t.click_id==='late').reason,'outside_window');});
 test('abertura explícita corrige toque recebido antes da instalação',()=>{const s=createService();touch(s,'early','2026-10-01T10:00:00Z');s.open({install_id:'install1',first_open_at:'2026-10-02T10:00:00Z'});const a=s.register({install_id:'install1',user_id:'u',registered_at:'2026-10-03T10:00:00Z'});assert.equal(a.attribution.kind,'organic');assert.equal(a.touches[0].reason,'before_first_open');});
+test('aberturas fora de ordem resolvem a menor data sem reiniciar janela',()=>{
+ const results=[];
+ for(const times of [['2026-10-03T10:00:00Z','2026-10-01T10:00:00Z'],['2026-10-01T10:00:00Z','2026-10-03T10:00:00Z']]){
+  const s=createService();for(const first_open_at of times)s.open({install_id:'install1',first_open_at});
+  touch(s,'edge','2026-10-08T10:00:00Z');touch(s,'outside','2026-10-08T10:00:00.001Z',ref);
+  const r=s.register({install_id:'install1',user_id:'u',registered_at:'2026-10-09T10:00:00Z'});
+  assert.equal(r.first_open_at,'2026-10-01T10:00:00.000Z');assert.equal(r.attribution.click_id,'edge');assert.equal(r.touches[1].reason,'outside_window');results.push(r);
+ }
+ assert.deepEqual(results[0],results[1]);
+});
+test('abertura repetida em outro fuso representa o mesmo instante',()=>{
+ const s=createService();s.open({install_id:'install1',first_open_at:'2026-10-01T07:00:00-03:00'});
+ assert.equal(s.open({install_id:'install1',first_open_at:'2026-10-01T10:00:00Z'}).first_open_at,'2026-10-01T10:00:00.000Z');
+});
+test('sem abertura explícita, toques fora de ordem reconciliam a estimativa',()=>{
+ const s=createService();touch(s,'later','2026-10-03T10:00:00Z');touch(s,'earlier','2026-10-01T10:00:00Z');
+ assert.equal(s.register({install_id:'install1',user_id:'u',registered_at:'2026-10-04T10:00:00Z'}).first_open_at,'2026-10-01T10:00:00.000Z');
+});
+test('cadastro congela a abertura; replay aceita e correção tardia retorna 409',()=>{
+ const s=createService();s.open({install_id:'install1',first_open_at:'2026-10-01T10:00:00Z'});touch(s,'original','2026-10-02T10:00:00Z');
+ const before=s.register({install_id:'install1',user_id:'u',registered_at:'2026-10-03T10:00:00Z'});
+ assert.equal(s.open({install_id:'install1',first_open_at:'2026-10-01T07:00:00-03:00'}).first_open_at,before.first_open_at);
+ assert.throws(()=>s.open({install_id:'install1',first_open_at:'2026-09-01T10:00:00Z'}),{status:409});assert.deepEqual(s.getRegistration('u'),before);
+});
+test('cadastro anterior à primeira abertura é recusado sem consumir usuário',()=>{
+ const s=createService();s.open({install_id:'install1',first_open_at:'2026-10-02T10:00:00Z'});
+ assert.throws(()=>s.register({install_id:'install1',user_id:'u',registered_at:'2026-10-01T10:00:00Z'}),{status:409});
+ assert.equal(s.register({install_id:'install1',user_id:'u',registered_at:'2026-10-03T10:00:00Z'}).user_id,'u');
+});

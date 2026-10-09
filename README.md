@@ -7,6 +7,8 @@ Exemplo indicação: `https://app.conty.example/open?referral=creator_123`
 
 Regra: **último toque elegível vence**; empate de milissegundo: `click_id` ascendente. Janela inclusiva de sete dias de 24 horas contada de `first_open_at`, nunca reiniciada por outro clique; depois do cadastro nenhum novo toque vence. Cliques duplicados não geram nova origem. Se nada vence, é `organic` com `reason: no_eligible_touch`. A resposta de registro inclui todos os toques, suas razões e o vencedor.
 
+Aberturas recebidas fora de ordem usam o instante do evento: antes do cadastro, prevalece a menor data entre as aberturas explícitas, independentemente da ordem de chegada. A primeira abertura explícita substitui a estimativa por toque; outras aberturas posteriores não reiniciam a janela. Na ausência de eventos explícitos, a estimativa usa o toque mais antigo. Datas equivalentes com fusos diferentes são tratadas como o mesmo instante. Depois do cadastro, um replay da abertura é aceito e qualquer mudança retorna 409 para preservar a atribuição registrada. Cadastro anterior à abertura também retorna 409.
+
 ```bash
 npm test && npm run typecheck
 npm start
@@ -27,8 +29,9 @@ O autor realizou a revisão pessoal dos nove desafios, conforme declarado nesta 
 | Área | Pontos de análise e revisão |
 |---|---|
 | Geração da estrutura | Registrar primeira abertura por /opens independentemente do toque; manter cliques auditáveis e um vencedor determinístico. |
-| Geração e revisão dos testes | Cobrir dois links, empate de timestamps, replay de clique, janela inclusiva, toque após cadastro, acesso orgânico e abertura explícita após toque recebido antes. |
+| Geração e revisão dos testes | Cobrir dois links, empate de timestamps, replay de clique, janela inclusiva, toque após cadastro, acesso orgânico, aberturas em ordem invertida, fusos equivalentes, estimativa por toque e congelamento no cadastro. |
 | Qualidade estrutural | Conferir reconciliação entre abertura explícita e abertura inferida, regra de último toque e motivos de descarte. |
 
-**Atenção média identificada na revisão pessoal:** a primeira abertura é registrada separadamente; a reconciliação de eventos de abertura recebidos fora de ordem merece análise adicional.
+**Ponto identificado na revisão pessoal e corrigido:** a reconciliação da primeira abertura agora é determinística pela data do evento, com testes de regressão para ordens de chegada diferentes e para eventos recebidos após o cadastro.
 
+A suíte passou em 12 testes, além de `npm run typecheck` (checagem sintática).
