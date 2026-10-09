@@ -34,4 +34,13 @@ O autor realizou a revisão pessoal dos nove desafios, conforme declarado nesta 
 
 **Ponto identificado na revisão pessoal e corrigido:** a reconciliação da primeira abertura agora é determinística pela data do evento, com testes de regressão para ordens de chegada diferentes e para eventos recebidos após o cadastro.
 
-A suíte passou em 12 testes, além de `npm run typecheck` (checagem sintática).
+A suíte passou em 15 testes, além de `npm run typecheck` (checagem sintática).
+
+
+## Verificação completa em 09/10/2026
+
+Datas dos toques são normalizadas para UTC. Replay do mesmo click_id em outro fuso, representando o mesmo instante e link, é idempotente.
+
+O transporte HTTP rejeita JSON nulo, arrays e valores primitivos com 400 antes de chamar o serviço. Parâmetros de rota são decodificados uma vez; escape inválido retorna 400. Dois testes de transporte verificam esses comportamentos, incluindo códigos com caracteres especiais.
+
+Resultado desta rodada: 15 testes aprovados, zero falhas; checagem sintática aprovada e smoke HTTP com entrada válida 200 e inválida 400. As correções e a nova validação foram realizadas pelo Codex; não são atribuídas como revisão manual do autor.

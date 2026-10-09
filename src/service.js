@@ -29,7 +29,7 @@ export function createService({windowDays=7}={}){
    i.first_open_explicit=true;
    return {install_id,first_open_at:i.first_open_at};
  },
- touch({install_id,click_id,url,opened_at}){required(typeof install_id==='string'&&!!install_id&&typeof click_id==='string'&&!!click_id,'Instalação e clique obrigatórios');parse(opened_at);const origin=source(url);const install=getInstall(install_id);
+ touch({install_id,click_id,url,opened_at}){required(typeof install_id==='string'&&!!install_id&&typeof click_id==='string'&&!!click_id,'Instalação e clique obrigatórios');opened_at=new Date(parse(opened_at)).toISOString();const origin=source(url);const install=getInstall(install_id);
    const old=install.touches.find(t=>t.click_id===click_id);if(old){if(old.opened_at!==opened_at||old.url!==url)fail('Clique duplicado conflitante',409);return structuredClone(old);}
    if(!install.registration&&!install.first_open_explicit&&(install.first_open_at===null||Date.parse(opened_at)<Date.parse(install.first_open_at)))install.first_open_at=new Date(Date.parse(opened_at)).toISOString();
    const touch={click_id,opened_at,...origin,received_after_registration:!!install.registration};install.touches.push(touch);return structuredClone(touch);
